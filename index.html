@@ -86,21 +86,21 @@
 
       <div class="panel">
         <h2>Where should we send it?</h2>
-        <!-- ================================================================
-             ONE-TIME SETUP (full steps in google-setup/SETUP-STEPS.txt):
-             1. Create your Google Form (exact fields listed in SETUP-STEPS.txt).
-             2. Form > Responses > "Link to Sheets" > Create - that Sheet on your
-                Drive is where every lead lands, with the tags.
-             3. Form > Send > the < > embed icon > copy the iframe code.
-             4. Paste that iframe here, replacing the placeholder below.
-             5. Drag this folder onto https://app.netlify.com/drop to publish.
-             ================================================================ -->
-        <iframe
-          class="embed"
-          src="https://docs.google.com/forms/d/e/1FAIpQLSc6t-ed8hGfuWdh5ZO9tP4Mwveeb3INW6siWQt-U5KMjjG1Fw/viewform?embedded=true"
-          title="Start Here Pack request form"
-          loading="lazy">
-        </iframe>
+        <!-- Form is built and live (setup: google-setup/SETUP-GOOGLE-FORM.txt).
+             Do not edit the iframe. Turnstile + chat setup:
+             ai-for-aussie-women/cloudflare-setup/SETUP-CLOUDFLARE.txt -->
+        <div id="form-gate" hidden>
+          <p class="embed-note">Quick robot check — the form appears the moment it passes.</p>
+          <div id="ts-widget"></div>
+        </div>
+        <div id="form-wrap">
+          <iframe
+            class="embed"
+            src="https://docs.google.com/forms/d/e/1FAIpQLSc6t-ed8hGfuWdh5ZO9tP4Mwveeb3INW6siWQt-U5KMjjG1Fw/viewform?embedded=true"
+            title="Start Here Pack request form"
+            loading="lazy">
+          </iframe>
+        </div>
       </div>
 
     </div>
@@ -114,5 +114,54 @@
   </div>
 </footer>
 
+<!-- ================= ONE-TIME SETUP =================
+     Form: google-setup/SETUP-GOOGLE-FORM.txt (built and live - do not edit the iframe).
+     Turnstile + Gemma chat: ai-for-aussie-women/cloudflare-setup/SETUP-CLOUDFLARE.txt
+     (on the new AI Business Cloudflare account; values go in site-config.js).
+     Redeploy: git commit + push of this publish folder. -->
+<script src="site-config.js"></script>
+<script src="chat-widget.js"></script>
+<script>
+(function () {
+  var cfg = window.AFW_CONFIG || {};
+  if (!cfg.TURNSTILE_SITEKEY || location.protocol !== "https:") return;
+
+  var formWrap = document.getElementById("form-wrap");
+  var gate = document.getElementById("form-gate");
+  if (!formWrap || !gate) return;
+
+  var revealed = false;
+  function done() {
+    if (revealed) return;
+    revealed = true;
+    gate.hidden = true;
+    formWrap.hidden = false;
+  }
+
+  // Soft gate: hide the form until the tick passes; fail-open on any error or 8s.
+  formWrap.hidden = true;
+  gate.hidden = false;
+
+  var s = document.createElement("script");
+  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  s.async = true;
+  s.defer = true;
+  s.onload = function () {
+    if (!window.turnstile) { done(); return; }
+    try {
+      window.turnstile.render(document.getElementById("ts-widget"), {
+        sitekey: cfg.TURNSTILE_SITEKEY,
+        callback: done,
+        "error-callback": done,
+        "timeout-callback": done,
+        theme: "light"
+      });
+    } catch (e) { done(); }
+  };
+  s.onerror = done;
+  document.head.appendChild(s);
+  setTimeout(done, 8000);
+})();
+</script>
 </body>
 </html>
